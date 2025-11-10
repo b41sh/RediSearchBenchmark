@@ -16,6 +16,7 @@ import (
 	"sync"
 
 	"github.com/RediSearch/RediSearchBenchmark/index"
+	"github.com/RediSearch/RediSearchBenchmark/index/databend"
 	"github.com/RediSearch/RediSearchBenchmark/index/elastic"
 	"github.com/RediSearch/RediSearchBenchmark/index/redisearch"
 	"github.com/RediSearch/RediSearchBenchmark/ingest"
@@ -37,6 +38,7 @@ const (
 	BENCHMARK_DEFAULT         = BENCHMARK_SEARCH
 	ENGINE_REDIS              = "redis"
 	ENGINE_ELASTIC            = "elastic"
+	ENGINE_DATABEND           = "databend"
 	TERM_QUERY_MAX_LEN        = "term-query-prefix-max-len"
 	ENGINE_DEFAULT            = ENGINE_REDIS
 	DEFAULT_STOPWORDS         = "a,an,and,are,as,at,be,but,by,for,if,in,into,is,it,no,not,of,on,or,such,that,the,their,then,there,these,they,this,to,was,will,with"
@@ -78,6 +80,10 @@ func selectIndex(indexMetadata *index.Metadata, engine string, hosts []string, u
 			panic(err)
 		}
 		return idx, 0
+	case ENGINE_DATABEND:
+		indexMetadata.Options = redisearch.IndexingOptions{Prefix: cmdPrefix}
+		idx := databend.NewIndex(hosts, pass, temporary, name, indexMetadata, withSuffixTrie)
+ 		return idx, 0
 	}
 	panic("could not find index type " + engine)
 }
@@ -86,7 +92,7 @@ func main() {
 	runtimeCPUs := runtime.NumCPU()
 	hosts := flag.String("hosts", "localhost:6379", "comma separated list of host:port to redis nodes")
 	fileName := flag.String("file", "", "Input file to ingest data from (wikipedia abstracts)")
-	engine := flag.String("engine", ENGINE_DEFAULT, fmt.Sprintf("The search backend to run. One of: [%s]", strings.Join([]string{ENGINE_REDIS, ENGINE_ELASTIC}, "|")))
+	engine := flag.String("engine", ENGINE_DEFAULT, fmt.Sprintf("The search backend to run. One of: [%s]", strings.Join([]string{ENGINE_REDIS, ENGINE_ELASTIC, ENGINE_DATABEND}, "|")))
 	termsProperty := flag.String("terms-property", "body", "When we read the terms from the input file we read the text from the property specified in this option. If empty the default property field will be used. Default on 'enwiki' dataset = 'body'. Default on 'reddit' dataset = 'body'")
 	termQueryPrefixMinLen := flag.Int64("term-query-prefix-min-len", 3, "Minimum prefix length for the generated term queries.")
 	termQueryPrefixMaxLen := flag.Int64(TERM_QUERY_MAX_LEN, 3, "Maximum prefix length for the generated term queries.")

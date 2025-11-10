@@ -118,16 +118,51 @@ func ReadFile(fileName string, r DocumentReader, idx index.Index, opts interface
 	}
 
 	numOfDocs := 0
+	batchSize := 1000
+	batch := make([]index.Document, 0, batchSize)
+	startTime := time.Now()
+	batchCount := 0
+
 	for doc := range ch {
 		if doc.Id != "" {
-			err = idx.Index([]index.Document{doc}, opts)
-			if err != nil {
-				log.Fatal(err)
-			}
+			batch = append(batch, doc)
 			numOfDocs++
+
+			// When batch is full, index it
+			if len(batch) >= batchSize {
+				batchCount++
+				err = idx.Index(batch, opts)
+				if err != nil {
+					log.Fatal(err)
+				}
+
+				// Log progress every 10 batches
+				elapsed := time.Since(startTime)
+				docsPerSec := float64(numOfDocs) / elapsed.Seconds()
+				fmt.Printf("Indexed %d documents (%d batches) in %.2f seconds (%.2f docs/sec)\n",
+					numOfDocs, batchCount, elapsed.Seconds(), docsPerSec)
+
+				// Clear the batch for reuse
+				batch = batch[:0]
+			}
 		} else {
 			fmt.Println("warning empty id")
 		}
 	}
+
+	// Index any remaining documents in the batch
+	if len(batch) > 0 {
+		batchCount++
+		err = idx.Index(batch, opts)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+
+	// Log final statistics
+	elapsed := time.Since(startTime)
+	docsPerSec := float64(numOfDocs) / elapsed.Seconds()
+	fmt.Printf("Finished indexing %d documents (%d batches) in %.2f seconds (%.2f docs/sec)\n",
+		numOfDocs, batchCount, elapsed.Seconds(), docsPerSec)
 	return nil
 }

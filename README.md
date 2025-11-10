@@ -78,6 +78,11 @@ wget https://s3.amazonaws.com/benchmarks.redislabs/redisearch/datasets/enwiki-ab
 ./bin/document-benchmark -hosts "https://127.0.0.1:9200" -engine elastic -password "password" -file enwiki-latest-abstract.xml -maxdocs 100000
 ```
 
+* Populate into Databend:
+```
+./bin/document-benchmark -hosts "127.0.0.1:8000" -engine databend -file enwiki-latest-abstract.xml -maxdocs 100000
+```
+
 * Run the RediSearch benchmark:
 ```
 ./bin/document-benchmark -hosts "127.0.0.1:6379" -engine redis -benchmark search -file enwiki-latest-abstract.xml
@@ -86,4 +91,9 @@ wget https://s3.amazonaws.com/benchmarks.redislabs/redisearch/datasets/enwiki-ab
 * Run the ElasticSearch benchmark:
 ```
 ./bin/document-benchmark -hosts "https://127.0.0.1:9200" -engine elastic -password "password" -file enwiki-latest-abstract.xml -benchmark search 
+```
+
+* Run the Databend benchmark:
+```
+./bin/document-benchmark -hosts "127.0.0.1:8000" -engine databend -benchmark search -file enwiki-latest-abstract.xml
 ```

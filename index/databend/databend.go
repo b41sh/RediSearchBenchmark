@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	//"strconv"
 	"strings"
 	"sync"
 
@@ -72,19 +71,11 @@ func NewIndex(addrs []string, pass string, temporary int, name string, md *index
 		}
 	}
 
-	fmt.Println("0000000000-new")
-	dsn := "databend://root:@0.0.0.0:48000/default?sslmode=disable"
+	dsn := fmt.Sprintf("databend://root:@%s/default?sslmode=disable", addrs[0])
 	db, err := sql.Open("databend", dsn)
 	if err != nil {
 		fmt.Println("Error connecting to Databend:", err)
-		//return err
 	}
-	err = db.Ping()
-	if err != nil {
-		fmt.Println("Error pinging Databend:", err)
-		//return err
-	}
-
 	ret.db = db
 
 	return ret
@@ -92,9 +83,7 @@ func NewIndex(addrs []string, pass string, temporary int, name string, md *index
 
 func (i *Index) DocumentCount() (count int64) {
 	query := fmt.Sprintf("SELECT COUNT(*) FROM %s", i.name)
-	fmt.Println("query=", query)
 	row := i.db.QueryRow(query)
-	fmt.Println("Count row:", row)
 	err := row.Scan(&count)
 	if err != nil {
 		log.Printf("Error getting document count: %v", err)
@@ -118,10 +107,9 @@ func (i *Index) GetName() string {
 
 // Create configues the index and creates it on redis
 func (i *Index) Create() error {
-	err2 := i.db.Ping()
-	if err2 != nil {
-		fmt.Println("---222--Error pinging Databend:", err2)
-		dsn := "databend://root:@0.0.0.0:48000/default?sslmode=disable"
+	err := i.db.Ping()
+	if err != nil {
+		dsn := fmt.Sprintf("databend://root:@%s/default?sslmode=disable", i.hosts[0])
 		db, err := sql.Open("databend", dsn)
 		if err != nil {
 			fmt.Println("Error connecting to Databend:", err)
@@ -146,7 +134,7 @@ func (i *Index) Create() error {
 		}
 	}
 
-	// Add full-text index for text fields
+	// Add inverted index for text fields
 	indexField := ""
 	for _, f := range i.md.Fields {
 		if f.Type == index.TextField {
@@ -160,9 +148,8 @@ func (i *Index) Create() error {
 	createTableSQL += fmt.Sprintf(" INVERTED INDEX idx(%s))", indexField)
 	fmt.Println("Creating table SQL:", createTableSQL)
 
-	// createTableSQL2 := "CREATE TABLE zzzzzz(i int, v float)"
 	// Execute the create table statement
-	_, err := i.db.Exec(createTableSQL)
+	_, err = i.db.Exec(createTableSQL)
 	if err != nil {
 		fmt.Println("Error creating table:", err)
 		return err
@@ -361,7 +348,6 @@ func (i *Index) FullTextQuerySingleField(q query.Query, verbose int) (docs []ind
 }
 
 func (i *Index) flush(ctx context.Context) error {
-	//return client.FlushAll(ctx).Err()
 	_, err := i.db.ExecContext(ctx, fmt.Sprintf("TRUNCATE TABLE %s", i.name))
 	return err
 
